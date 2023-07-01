@@ -21,11 +21,15 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
 var querySnapshot = await collection.get();
 for (var notesSnapShot in querySnapshot.docs) {
   Map<String, dynamic> data = notesSnapShot.data();
+  var id = data["id"];
   var content = data['content'];
   var title = data['title'];
-  _notes.add(Note(title: title, content: content));
+  var isDeleted = data["isDeleted"];
+  var docId = notesSnapShot.id;
+  _notes.add(Note(id: id,title: title, content: content, isDeleted: isDeleted,docId: docId));
   }
   FirebaseFirestore.instance.disableNetwork();
+  print(_notes);
         emit(NotesLoaded(notes: _notes));
   
 
@@ -44,12 +48,18 @@ for (var notesSnapShot in querySnapshot.docs) {
     }
    },);
    on<RemoveNotes>((event, emit) {
-    if(state is NotesLoaded){
-      final state = this.state as NotesLoaded;
-      emit(
-        NotesLoaded(notes: List.from(state.notes)..remove(event.note))
-      );
-    }
+    if (state is NotesLoaded) {
+        final state = this.state as NotesLoaded;
+        final updatedNotes = state.notes.map((note) {
+          if (note.id == event.note.id) {
+
+            return event.note;
+          }
+          return note;
+        }).toList();
+        emit(NotesLoaded(notes: updatedNotes));
+      }
+   
    },);
   }
 }

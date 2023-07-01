@@ -5,9 +5,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'bloc/notes_bloc.dart';
 import 'note.dart';
+import 'dart:math';
 
 class AddNotesScreen extends StatelessWidget {
   AddNotesScreen({super.key});
+int uniqueId = 0;
+
+
+  int generateUniqueId() {
+  Random random = Random();
+  int _UniqueId = DateTime.now().millisecondsSinceEpoch + random.nextInt(999999);
+  return _UniqueId;
+}
+
+  
 
   String title = "",content = "";
 
@@ -21,7 +32,7 @@ class AddNotesScreen extends StatelessWidget {
   void _addNote() {
     String title = _titleController.text;
     String content = _contentController.text;
-    Note note = Note(title: title, content: content);
+    Note note = Note(id: "$uniqueId",isDeleted: "false",title: title, content: content);
 
     _notesCollection.add(note.toMap());
 
@@ -89,10 +100,11 @@ class AddNotesScreen extends StatelessWidget {
           SizedBox(height: 20,),
     ElevatedButton(
       onPressed: () {
+        uniqueId = generateUniqueId();
         _addNote();
         NoteScreen.addNewData = true;
 
-        Note _note = Note(id: "12", title: title, content: content);
+        Note _note = Note(id: "", isDeleted: "false", title: title, content: content);
 
         context.read<NotesBloc>().add(AddNotes(_note));
         

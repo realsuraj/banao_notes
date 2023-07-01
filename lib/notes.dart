@@ -1,5 +1,7 @@
 import 'package:banao_notes/add_notes.dart';
 import 'package:banao_notes/bloc/notes_bloc.dart';
+import 'package:banao_notes/edit_notes.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -15,6 +17,9 @@ class NoteScreen extends StatefulWidget {
 }
 
 class _NoteScreenState extends State<NoteScreen> {
+  String isDeletedState = "false";
+  String noteText = "Notes";
+  bool isDisplayNotes = true;
  
    @override
   void initState() {
@@ -23,7 +28,7 @@ class _NoteScreenState extends State<NoteScreen> {
      if(NoteScreen.addNewData == true){
       Fluttertoast.showToast(
         msg: "notes added successfully",
-        toastLength: Toast.LENGTH_SHORT,
+        toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.TOP,
         timeInSecForIosWeb: 1,
         backgroundColor: Colors.green,
@@ -51,78 +56,109 @@ class _NoteScreenState extends State<NoteScreen> {
         children: [
          
           
-          Container(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
         padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Text(
-          "Notes",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+              "$noteText",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
         ),
+              ),
+               Container(
+        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        child:IconButton(onPressed: (){
+          setState(() {
+            isDeletedState = (isDeletedState == "false")?isDeletedState = "true":isDeletedState = "false";
+            noteText = (noteText == "Notes")?"Trash Notes":"Notes";
+          });
+        },icon: Icon(Icons.backup))
+          ),
+            ],
           ),
           Expanded(
         child: ListView.builder(
           itemCount: state.notes.length,
           itemBuilder: (BuildContext context, int index) {
             Note note = state.notes[index];
-            return Container(
-              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: InkWell(
-                onTap: (){
-                   showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text(note.title),
-                        content: Text(note.content),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: Text('Close'),
-                          ),
-                        ],
-                      );
-                       },
-                  );
-                    
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      note.title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      note.content,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+            return Visibility(
+                visible: (note.isDeleted == isDeletedState)?true:false,
+  
+              child: Container(
+                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.3),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
                     ),
                   ],
+                ),
+                child: InkWell(
+                  onTap: (){
+                     
+                        Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => EditNotes(content: note.content, title: note.title)),
+  );
+                      
+                  },
+                  child: Stack(
+                    children: [
+                       Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          note.title,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          note.content,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        
+                      
+                      )
+                      ],
+                    ),
+                 Visibility(
+                  visible: (note.isDeleted == "false")?true:false,
+                   child: Positioned(
+                    right: 0,
+                    child: IconButton(
+                      onPressed: (){
+                        context.read<NotesBloc>().add(RemoveNotes(Note(id: note.id, title: note.title, content: note.content, isDeleted: "true")));
+                      updateNoteInFirestore(Note(id: note.id, title: note.title, content: note.content, isDeleted: "true",docId: note.docId));
+                       Fluttertoast.showToast(
+                      msg: "Note Deleted successfully",
+                      toastLength: Toast.LENGTH_SHORT,
+                      gravity: ToastGravity.TOP,
+                      timeInSecForIosWeb: 1,
+                      backgroundColor: Colors.red,
+                      textColor: Colors.white,
+                      fontSize: 16.0,
+                    );
+                      }, 
+                      icon: Icon(Icons.delete))),
+                 )
+                    ]),
                 ),
               ),
             );
@@ -168,5 +204,31 @@ class _NoteScreenState extends State<NoteScreen> {
 
 
   }
+
+   void _deleteNote(Note note) {
+    setState(() {
+      note.isDeleted = "true";
+    });
+  }
+
+  
+    Future<void> updateNoteInFirestore(Note updatedNote) async {
+      print(updatedNote);
+  try {
+    final CollectionReference notesCollection = FirebaseFirestore.instance.collection('notes');
+    await notesCollection.doc(updatedNote.docId).update({
+      'isDeleted': updatedNote.isDeleted,
+      'id': updatedNote.id,
+      'title': updatedNote.title,
+      'content': updatedNote.content,
+    });
+  } catch (e) {
+    print('Failed to update note: $e');
+    // Handle the error as needed
+  }
+}
+  
  
 }
+
+
